@@ -7,23 +7,21 @@ namespace JobSvc.Data;
 
 public sealed partial class RabbitMqConnectionManager : IRabbitMqConnectionManager
 {
-    private readonly ConnectionFactory _connectionFactory;
+    private readonly IConnectionFactory _connectionFactory;
+    private readonly RabbitMqOptions _options;
     private readonly ILogger<RabbitMqConnectionManager> _logger;
-    private IConnection? _connection;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private IConnection? _connection;
     private bool _disposed;
 
     public RabbitMqConnectionManager(
+        IConnectionFactory connectionFactory,
         IOptions<RabbitMqOptions> options,
         ILogger<RabbitMqConnectionManager> logger)
     {
+        _connectionFactory = connectionFactory;
+        _options = options.Value;
         _logger = logger;
-        _connectionFactory = new ConnectionFactory
-        {
-            Uri = new Uri(options.Value.Uri),
-            AutomaticRecoveryEnabled = true,
-            NetworkRecoveryInterval = TimeSpan.FromSeconds(5)
-        };
     }
 
     public async Task<IConnection> GetConnectionAsync(CancellationToken ct = default)
