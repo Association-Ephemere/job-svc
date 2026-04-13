@@ -7,5 +7,5 @@ public class DatabaseOptions
     public const string SectionName = "ConnectionStrings";
 
     [Required(AllowEmptyStrings = false)]
-    public string CockroachDb { get; set; } = string.Empty;
+    public string Postgres { get; set; } = string.Empty;
 }

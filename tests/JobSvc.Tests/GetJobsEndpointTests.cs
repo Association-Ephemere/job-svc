@@ -55,7 +55,7 @@ public class GetJobsEndpointTests : IDisposable
 
         var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("ConnectionStrings:CockroachDb", "Host=localhost");
+            builder.UseSetting("ConnectionStrings:Postgres", "Host=localhost");
             builder.UseSetting("RabbitMq:Uri", "amqp://guest:guest@localhost/");
 
             builder.ConfigureServices(services =>
