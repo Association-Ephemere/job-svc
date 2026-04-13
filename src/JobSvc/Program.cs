@@ -16,6 +16,14 @@ builder.Services.AddDbContext<JobDbContext>((sp, options) =>
     options.UseNpgsql(dbOptions.CockroachDb);
 });
 
+// Register RabbitMQ options and manager
+builder.Services.AddOptions<RabbitMqOptions>()
+    .Bind(builder.Configuration.GetSection(RabbitMqOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<IRabbitMqConnectionManager, RabbitMqConnectionManager>();
+
 var app = builder.Build();
 
 // Ensure database is migrated on startup with retries (matching ingest-svc's robustness)
