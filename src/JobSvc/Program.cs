@@ -42,6 +42,12 @@ builder.Services.AddSingleton<IRabbitMqConnectionManager, RabbitMqConnectionMana
 builder.Services.AddSingleton<IRabbitMqInitializer, RabbitMqInitializer>();
 builder.Services.AddHostedService<PrintStatusConsumer>();
 
+builder.Services.AddOptions<WatchdogOptions>()
+    .Bind(builder.Configuration.GetSection(WatchdogOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddHostedService<StuckJobsWatchdog>();
+
 builder.Services.AddSingleton<INpgsqlConnectionFactory, NpgsqlConnectionFactory>();
 builder.Services.AddSingleton(_ => Channel.CreateUnbounded<StatusUpdate>());
 builder.Services.AddSingleton(sp => sp.GetRequiredService<Channel<StatusUpdate>>().Writer);
