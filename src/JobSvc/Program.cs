@@ -7,6 +7,9 @@ using JobSvc.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Minio;
+using Minio.ApiEndpoints;
+using Minio.DataModel.Args;
 using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,7 +23,7 @@ builder.Services.AddOptions<DatabaseOptions>()
 builder.Services.AddDbContext<JobDbContext>((sp, options) =>
 {
     var dbOptions = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-    options.UseNpgsql(dbOptions.CockroachDb);
+    options.UseNpgsql(dbOptions.Postgres);
 });
 
 // Register RabbitMQ options and manager
@@ -53,6 +56,23 @@ builder.Services.AddSingleton(_ => Channel.CreateUnbounded<StatusUpdate>());
 builder.Services.AddSingleton(sp => sp.GetRequiredService<Channel<StatusUpdate>>().Writer);
 builder.Services.AddSingleton(sp => sp.GetRequiredService<Channel<StatusUpdate>>().Reader);
 builder.Services.AddHostedService<JobStatusListener>();
+
+builder.Services.AddOptions<MinioOptions>()
+    .Bind(builder.Configuration.GetSection(MinioOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<IMinioClient>(sp =>
+{
+    var opts = sp.GetRequiredService<IOptions<MinioOptions>>().Value;
+    return new MinioClient()
+        .WithEndpoint(opts.Endpoint)
+        .WithCredentials(opts.AccessKey, opts.SecretKey)
+        .WithSSL(opts.UseSSL)
+        .Build();
+});
+builder.Services.AddSingleton<IBucketOperations>(sp => (IBucketOperations)sp.GetRequiredService<IMinioClient>());
+builder.Services.AddSingleton<IObjectOperations>(sp => (IObjectOperations)sp.GetRequiredService<IMinioClient>());
 
 var app = builder.Build();
 
@@ -220,6 +240,47 @@ app.MapGet("/jobs/{jobId:guid}", async (Guid jobId, JobDbContext db, Cancellatio
         job.CreatedAt,
         job.UpdatedAt,
         job.Photos.Select(p => new JobPhotoDto(p.PhotoStorageKey, p.Copies)).ToList()));
+});
+
+app.MapGet("/photos", async (
+    [FromQuery] int? limit,
+    [FromQuery] int? offset,
+    IBucketOperations bucket,
+    IObjectOperations objects,
+    IOptions<MinioOptions> minioOptions,
+    CancellationToken ct) =>
+{
+    var opts = minioOptions.Value;
+    var effectiveLimit = limit is null or <= 0 ? 50 : limit.Value;
+    var effectiveOffset = offset is null or < 0 ? 0 : offset.Value;
+
+    var listArgs = new ListObjectsArgs()
+        .WithBucket(opts.Bucket)
+        .WithPrefix("low/")
+        .WithRecursive(true);
+
+    var allKeys = new List<string>();
+    await foreach (var item in bucket.ListObjectsEnumAsync(listArgs, ct))
+    {
+        if (!item.IsDir)
+            allKeys.Add(item.Key);
+    }
+
+    allKeys.Sort(StringComparer.Ordinal);
+    var total = allKeys.Count;
+    var page = allKeys.Skip(effectiveOffset).Take(effectiveLimit).ToList();
+
+    var photos = await Task.WhenAll(page.Select(async key =>
+    {
+        var presignArgs = new PresignedGetObjectArgs()
+            .WithBucket(opts.Bucket)
+            .WithObject(key)
+            .WithExpiry(3600);
+        var url = await objects.PresignedGetObjectAsync(presignArgs);
+        return new PhotoEntry(key, url);
+    }));
+
+    return Results.Ok(new PhotoListResponse([.. photos], total));
 });
 
 var sseOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };

@@ -13,7 +13,7 @@ public class NpgsqlConnectionFactory : INpgsqlConnectionFactory
     private readonly string _connectionString;
 
     public NpgsqlConnectionFactory(IOptions<DatabaseOptions> options)
-        => _connectionString = options.Value.CockroachDb;
+        => _connectionString = options.Value.Postgres;
 
     public NpgsqlConnection Create() => new(_connectionString);
 }
