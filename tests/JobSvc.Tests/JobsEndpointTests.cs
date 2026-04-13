@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using RabbitMQ.Client;
+using Npgsql;
 
 namespace JobSvc.Tests;
 
@@ -60,6 +61,12 @@ public class JobsEndpointTests : IDisposable
                 var initDescriptor = services.Single(d => d.ServiceType == typeof(IRabbitMqInitializer));
                 services.Remove(initDescriptor);
                 services.AddSingleton<IRabbitMqInitializer>(_ => rabbitInitializerMock.Object);
+
+                var npgsqlFactoryDescriptor = services.Single(d => d.ServiceType == typeof(INpgsqlConnectionFactory));
+                services.Remove(npgsqlFactoryDescriptor);
+                var npgsqlFactoryMock = new Mock<INpgsqlConnectionFactory>();
+                npgsqlFactoryMock.Setup(f => f.Create()).Throws(new NpgsqlException("Test: DB not available"));
+                services.AddSingleton<INpgsqlConnectionFactory>(_ => npgsqlFactoryMock.Object);
             });
         });
         _factories.Add(factory);

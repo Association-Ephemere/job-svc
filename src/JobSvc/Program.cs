@@ -1,6 +1,8 @@
 using System.Text.Json;
+using System.Threading.Channels;
 using JobSvc.Consumers;
 using JobSvc.Data;
+using JobSvc.Listeners;
 using JobSvc.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +41,12 @@ builder.Services.AddSingleton<IConnectionFactory>(sp =>
 builder.Services.AddSingleton<IRabbitMqConnectionManager, RabbitMqConnectionManager>();
 builder.Services.AddSingleton<IRabbitMqInitializer, RabbitMqInitializer>();
 builder.Services.AddHostedService<PrintStatusConsumer>();
+
+builder.Services.AddSingleton<INpgsqlConnectionFactory, NpgsqlConnectionFactory>();
+builder.Services.AddSingleton(_ => Channel.CreateUnbounded<StatusUpdate>());
+builder.Services.AddSingleton(sp => sp.GetRequiredService<Channel<StatusUpdate>>().Writer);
+builder.Services.AddSingleton(sp => sp.GetRequiredService<Channel<StatusUpdate>>().Reader);
+builder.Services.AddHostedService<JobStatusListener>();
 
 var app = builder.Build();
 
