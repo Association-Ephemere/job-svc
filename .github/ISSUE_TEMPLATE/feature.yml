@@ -1,0 +1,52 @@
+name: Feature request
+description: Propose a new feature
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the feature you'd like to add to job-svc.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and motivation
+      description: What problem does this feature solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature description
+      description: Describe the expected behavior once implemented.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] job-svc publishes to RabbitMQ
+        - [ ] Status is updated in CockroachDB
+        - [ ] Unit tests cover the nominal case
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Did you consider other approaches?
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true

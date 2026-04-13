@@ -1,0 +1,65 @@
+name: Bug report
+description: Report unexpected behavior
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please fill out this form to help us reproduce the bug.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Clearly describe the problem you encountered.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Service starts with config X
+        2. A RabbitMQ message is consumed
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      render: text
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Linux
+        - Windows 11
+        - Windows 10
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: dotnet-version
+    attributes:
+      label: .NET version
+      placeholder: "e.g. 8.0.3"

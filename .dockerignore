@@ -1,0 +1,12 @@
+**/.git
+**/bin
+**/obj
+tests/
+*.md
+*.sln
+.gitignore
+.editorconfig
+.github/
+.vs/
+.vscode/
+LICENSE
