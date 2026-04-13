@@ -134,6 +134,78 @@ app.MapPost("/jobs", async (
     return Results.Created($"/jobs/{job.Id}", new JobResponse(job.Id, job.Status.ToString().ToLower(), job.CreatedAt));
 });
 
+app.MapGet("/jobs", async (
+    [FromQuery] string? status,
+    [FromQuery] int? limit,
+    [FromQuery] int? offset,
+    [FromQuery] string? sort,
+    JobDbContext db,
+    CancellationToken ct) =>
+{
+    var effectiveLimit = limit is null or <= 0 ? 50 : limit.Value;
+    var effectiveOffset = offset is null or < 0 ? 0 : offset.Value;
+
+    var query = db.Jobs.AsQueryable();
+
+    if (!string.IsNullOrEmpty(status))
+    {
+        var statuses = status.Split(',')
+            .Select(s => Enum.TryParse<JobStatus>(s.Trim(), true, out var js) ? js : (JobStatus?)null)
+            .Where(s => s.HasValue)
+            .Select(s => s!.Value)
+            .ToList();
+
+        if (statuses.Count > 0)
+            query = query.Where(j => statuses.Contains(j.Status));
+    }
+
+    var total = await query.CountAsync(ct);
+
+    if (sort == "status")
+    {
+        query = query.OrderBy(j =>
+            j.Status == JobStatus.Printing ? 0 :
+            j.Status == JobStatus.Requeued ? 1 :
+            j.Status == JobStatus.Queued ? 2 :
+            j.Status == JobStatus.Error ? 3 : 4);
+    }
+
+    var jobs = await query
+        .Skip(effectiveOffset)
+        .Take(effectiveLimit)
+        .Select(j => new JobListItemDto(
+            j.Id,
+            j.Status.ToString().ToLower(),
+            j.Total,
+            j.Printed,
+            j.RetryCount,
+            j.CreatedAt,
+            j.UpdatedAt))
+        .ToListAsync(ct);
+
+    return Results.Ok(new JobListResponse(jobs, total));
+});
+
+app.MapGet("/jobs/{jobId:guid}", async (Guid jobId, JobDbContext db, CancellationToken ct) =>
+{
+    var job = await db.Jobs
+        .Include(j => j.Photos)
+        .FirstOrDefaultAsync(j => j.Id == jobId, ct);
+
+    if (job is null)
+        return Results.NotFound();
+
+    return Results.Ok(new JobDetailDto(
+        job.Id,
+        job.Status.ToString().ToLower(),
+        job.Total,
+        job.Printed,
+        job.RetryCount,
+        job.CreatedAt,
+        job.UpdatedAt,
+        job.Photos.Select(p => new JobPhotoDto(p.PhotoStorageKey, p.Copies)).ToList()));
+});
+
 app.Run();
 
 public partial class Program { }

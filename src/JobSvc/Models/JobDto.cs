@@ -16,3 +16,34 @@ public record JobResponse(
     string Status,
     DateTimeOffset CreatedAt
 );
+
+public record JobListItemDto(
+    Guid Id,
+    string Status,
+    int Total,
+    int Printed,
+    int RetryCount,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt
+);
+
+public record JobListResponse(
+    List<JobListItemDto> Jobs,
+    int Total
+);
+
+public record JobPhotoDto(
+    string PhotoStorageKey,
+    int Copies
+);
+
+public record JobDetailDto(
+    Guid Id,
+    string Status,
+    int Total,
+    int Printed,
+    int RetryCount,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    List<JobPhotoDto> Photos
+);

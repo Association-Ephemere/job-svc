@@ -10,9 +10,17 @@ using RabbitMQ.Client;
 
 namespace JobSvc.Tests;
 
-public class JobsEndpointTests
+public class JobsEndpointTests : IDisposable
 {
-    private static WebApplicationFactory<Program> CreateFactory(out Mock<IChannel> channelMock)
+    private readonly List<WebApplicationFactory<Program>> _factories = [];
+
+    public void Dispose()
+    {
+        foreach (var factory in _factories)
+            factory.Dispose();
+    }
+
+    private WebApplicationFactory<Program> CreateFactory(out Mock<IChannel> channelMock)
     {
         var localChannelMock = new Mock<IChannel>();
         channelMock = localChannelMock;
@@ -34,7 +42,7 @@ public class JobsEndpointTests
 
         var dbName = "TestDb_" + Guid.NewGuid();
 
-        return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("ConnectionStrings:CockroachDb", "Host=localhost");
             builder.UseSetting("RabbitMq:Uri", "amqp://guest:guest@localhost/");
@@ -54,6 +62,8 @@ public class JobsEndpointTests
                 services.AddSingleton<IRabbitMqInitializer>(_ => rabbitInitializerMock.Object);
             });
         });
+        _factories.Add(factory);
+        return factory;
     }
 
     [Fact]
