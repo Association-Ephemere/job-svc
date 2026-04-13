@@ -1,6 +1,7 @@
 using JobSvc.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,15 @@ builder.Services.AddOptions<RabbitMqOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddSingleton<IConnectionFactory>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<RabbitMqOptions>>().Value;
+    return new ConnectionFactory
+    {
+        Uri = new Uri(options.Uri),
+        AutomaticRecoveryEnabled = true
+    };
+});
 builder.Services.AddSingleton<IRabbitMqConnectionManager, RabbitMqConnectionManager>();
 
 var app = builder.Build();
