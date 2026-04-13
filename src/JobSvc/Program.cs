@@ -216,6 +216,57 @@ app.MapGet("/jobs/{jobId:guid}", async (Guid jobId, JobDbContext db, Cancellatio
         job.Photos.Select(p => new JobPhotoDto(p.PhotoStorageKey, p.Copies)).ToList()));
 });
 
+var sseOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+app.MapGet("/jobs/{jobId:guid}/stream", async (
+    Guid jobId,
+    JobDbContext db,
+    ChannelReader<StatusUpdate> reader,
+    HttpResponse response,
+    CancellationToken ct) =>
+{
+    var job = await db.Jobs.AsNoTracking().FirstOrDefaultAsync(j => j.Id == jobId, ct);
+    if (job is null)
+        return Results.NotFound();
+
+    response.ContentType = "text/event-stream";
+    response.Headers["Cache-Control"] = "no-cache";
+    response.Headers["X-Accel-Buffering"] = "no";
+
+    var initial = new StatusUpdate(
+        jobId.ToString(),
+        job.Status.ToString().ToLower(),
+        job.Printed,
+        job.Total,
+        job.Error);
+
+    await WriteSseEventAsync(response, initial, ct);
+
+    if (initial.Status is "done" or "error")
+        return Results.Empty;
+
+    var jobIdStr = jobId.ToString();
+
+    await foreach (var update in reader.ReadAllAsync(ct))
+    {
+        if (update.JobId != jobIdStr)
+            continue;
+
+        await WriteSseEventAsync(response, update, ct);
+
+        if (update.Status is "done" or "error")
+            break;
+    }
+
+    return Results.Empty;
+});
+
 app.Run();
+
+async Task WriteSseEventAsync(HttpResponse response, StatusUpdate update, CancellationToken ct)
+{
+    await response.WriteAsync($"data: {JsonSerializer.Serialize(update, sseOptions)}\n\n", ct);
+    await response.Body.FlushAsync(ct);
+}
 
 public partial class Program { }
