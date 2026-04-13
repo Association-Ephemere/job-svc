@@ -8,7 +8,6 @@ namespace JobSvc.Data;
 public sealed partial class RabbitMqConnectionManager : IRabbitMqConnectionManager
 {
     private readonly IConnectionFactory _connectionFactory;
-    private readonly RabbitMqOptions _options;
     private readonly ILogger<RabbitMqConnectionManager> _logger;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
     private IConnection? _connection;
@@ -20,7 +19,6 @@ public sealed partial class RabbitMqConnectionManager : IRabbitMqConnectionManag
         ILogger<RabbitMqConnectionManager> logger)
     {
         _connectionFactory = connectionFactory;
-        _options = options.Value;
         _logger = logger;
     }
 
