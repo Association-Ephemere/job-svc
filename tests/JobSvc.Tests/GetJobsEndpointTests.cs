@@ -29,7 +29,24 @@ public class GetJobsEndpointTests : IDisposable
     {
         var dbName = "TestDb_" + Guid.NewGuid();
 
+        var channelMock = new Mock<IChannel>();
+        channelMock
+            .Setup(c => c.BasicConsumeAsync(
+                It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>(),
+                It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<IDictionary<string, object?>>(),
+                It.IsAny<IAsyncBasicConsumer>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("consumerTag");
+
+        var connectionMock = new Mock<IConnection>();
+        connectionMock
+            .Setup(c => c.CreateChannelAsync(It.IsAny<CreateChannelOptions?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(channelMock.Object);
+
         var rabbitManagerMock = new Mock<IRabbitMqConnectionManager>();
+        rabbitManagerMock
+            .Setup(m => m.GetConnectionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(connectionMock.Object);
+
         var rabbitInitializerMock = new Mock<IRabbitMqInitializer>();
         rabbitInitializerMock
             .Setup(i => i.InitializeAsync(It.IsAny<CancellationToken>()))

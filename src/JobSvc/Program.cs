@@ -1,4 +1,5 @@
 using System.Text.Json;
+using JobSvc.Consumers;
 using JobSvc.Data;
 using JobSvc.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -37,6 +38,7 @@ builder.Services.AddSingleton<IConnectionFactory>(sp =>
 });
 builder.Services.AddSingleton<IRabbitMqConnectionManager, RabbitMqConnectionManager>();
 builder.Services.AddSingleton<IRabbitMqInitializer, RabbitMqInitializer>();
+builder.Services.AddHostedService<PrintStatusConsumer>();
 
 var app = builder.Build();
 
