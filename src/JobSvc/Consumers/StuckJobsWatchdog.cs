@@ -115,13 +115,10 @@ public sealed partial class StuckJobsWatchdog : BackgroundService
         job.Error = "max retries reached";
         job.UpdatedAt = DateTimeOffset.UtcNow;
 
-        var payload = BuildNotifyPayload(job);
-
         if (db.Database.IsRelational())
         {
             await using var tx = await db.Database.BeginTransactionAsync(ct);
             await db.SaveChangesAsync(ct);
-            await db.Database.ExecuteSqlAsync($"SELECT pg_notify('job_status', {payload})", ct);
             await tx.CommitAsync(ct);
         }
         else
@@ -129,6 +126,7 @@ public sealed partial class StuckJobsWatchdog : BackgroundService
             await db.SaveChangesAsync(ct);
         }
 
+        await PublishBroadcastAsync(job, ct);
         LogJobMarkedAsError(_logger, job.Id);
     }
 
@@ -142,13 +140,10 @@ public sealed partial class StuckJobsWatchdog : BackgroundService
         job.RetryCount++;
         job.UpdatedAt = DateTimeOffset.UtcNow;
 
-        var payload = BuildNotifyPayload(job);
-
         if (db.Database.IsRelational())
         {
             await using var tx = await db.Database.BeginTransactionAsync(ct);
             await db.SaveChangesAsync(ct);
-            await db.Database.ExecuteSqlAsync($"SELECT pg_notify('job_status', {payload})", ct);
             await tx.CommitAsync(ct);
         }
         else
@@ -156,6 +151,7 @@ public sealed partial class StuckJobsWatchdog : BackgroundService
             await db.SaveChangesAsync(ct);
         }
 
+        await PublishBroadcastAsync(job, ct);
         LogJobRequeued(_logger, job.Id, job.RetryCount);
     }
 
@@ -180,15 +176,24 @@ public sealed partial class StuckJobsWatchdog : BackgroundService
             cancellationToken: ct);
     }
 
-    private static string BuildNotifyPayload(Job job) =>
-        JsonSerializer.Serialize(new
-        {
-            jobId = job.Id.ToString(),
-            status = job.Status.ToString().ToLower(),
-            printed = job.Printed,
-            total = job.Total,
-            error = job.Error
-        });
+    private async Task PublishBroadcastAsync(Job job, CancellationToken ct)
+    {
+        var message = new PrintStatusMessage(
+            job.Id,
+            job.Status.ToString().ToLower(),
+            job.Printed,
+            job.Total,
+            job.Error);
+
+        var connection = await _connectionManager.GetConnectionAsync(ct);
+        using var channel = await connection.CreateChannelAsync(cancellationToken: ct);
+        var body = JsonSerializer.SerializeToUtf8Bytes(message, SerializeOptions);
+        await channel.BasicPublishAsync(
+            exchange: RabbitMqInitializer.BroadcastExchangeName,
+            routingKey: "",
+            body: body,
+            cancellationToken: ct);
+    }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Watchdog found no stale jobs.")]
     private static partial void LogNoStaleJobs(ILogger logger);

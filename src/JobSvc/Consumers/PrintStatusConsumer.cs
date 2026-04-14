@@ -98,14 +98,21 @@ public sealed partial class PrintStatusConsumer : BackgroundService
         {
             await using var tx = await db.Database.BeginTransactionAsync(ct);
             await UpdateJobAsync(db, message, status, ct);
-            var payload = JsonSerializer.Serialize(message, SerializeOptions);
-            await db.Database.ExecuteSqlAsync($"SELECT pg_notify('job_status', {payload})", ct);
             await tx.CommitAsync(ct);
         }
         else
         {
             await UpdateJobAsync(db, message, status, ct);
         }
+
+        var connection = await _connectionManager.GetConnectionAsync(ct);
+        using var pubChannel = await connection.CreateChannelAsync(cancellationToken: ct);
+        var body = JsonSerializer.SerializeToUtf8Bytes(message, SerializeOptions);
+        await pubChannel.BasicPublishAsync(
+            exchange: RabbitMqInitializer.BroadcastExchangeName,
+            routingKey: "",
+            body: body,
+            cancellationToken: ct);
     }
 
     private static async Task UpdateJobAsync(JobDbContext db, PrintStatusMessage message, JobStatus status, CancellationToken ct)

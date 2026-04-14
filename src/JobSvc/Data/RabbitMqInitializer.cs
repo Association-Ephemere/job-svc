@@ -16,6 +16,7 @@ public sealed partial class RabbitMqInitializer : IRabbitMqInitializer
     public const string ExchangeName = "photostand";
     public const string PrintJobsQueue = "print.jobs";
     public const string PrintStatusQueue = "print.status";
+    public const string BroadcastExchangeName = "job_status_broadcast";
 
     public RabbitMqInitializer(
         IRabbitMqConnectionManager connectionManager,
@@ -34,11 +35,18 @@ public sealed partial class RabbitMqInitializer : IRabbitMqInitializer
 
         var quorumArgs = new Dictionary<string, object?> { ["x-queue-type"] = "quorum" };
 
-        // Declare Exchange
+        // Declare Exchanges
         await channel.ExchangeDeclareAsync(
             exchange: ExchangeName,
             type: ExchangeType.Direct,
             durable: true,
+            autoDelete: false,
+            cancellationToken: ct);
+
+        await channel.ExchangeDeclareAsync(
+            exchange: BroadcastExchangeName,
+            type: ExchangeType.Fanout,
+            durable: false,
             autoDelete: false,
             cancellationToken: ct);
 
