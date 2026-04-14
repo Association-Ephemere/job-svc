@@ -14,8 +14,8 @@ namespace JobSvc.Tests;
 public class GetJobsEndpointTests : IDisposable
 {
     private record JobListResponse(List<JobListItemDto> Jobs, int Total);
-    private record JobListItemDto(Guid Id, string Status, int Total, int Printed, int RetryCount, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
-    private record JobDetailResponse(Guid Id, string Status, int Total, int Printed, int RetryCount, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, List<PhotoDto> Photos);
+    private record JobListItemDto(Guid Id, string Status, int Total, int Printed, int RetryCount, int TicketNumber, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+    private record JobDetailResponse(Guid Id, string Status, int Total, int Printed, int RetryCount, int TicketNumber, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, List<PhotoDto> Photos);
     private record PhotoDto(string PhotoStorageKey, int Copies);
 
     private readonly List<WebApplicationFactory<Program>> _factories = [];

@@ -83,7 +83,7 @@ public class JobsEndpointTests : IDisposable
         [
             new PhotoRequest("full/abc.jpg", 2),
             new PhotoRequest("full/def.jpg", 1)
-        ]);
+        ], TicketNumber: 42);
 
         var response = await client.PostAsJsonAsync("/jobs", request);
 
@@ -101,7 +101,7 @@ public class JobsEndpointTests : IDisposable
         var factory = CreateFactory(out _);
         var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/jobs", new CreateJobRequest([]));
+        var response = await client.PostAsJsonAsync("/jobs", new CreateJobRequest([], TicketNumber: 1));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -116,7 +116,7 @@ public class JobsEndpointTests : IDisposable
         [
             new PhotoRequest("full/abc.jpg", 2),
             new PhotoRequest("full/def.jpg", 1)
-        ]);
+        ], TicketNumber: 7);
 
         var response = await client.PostAsJsonAsync("/jobs", request);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -137,7 +137,7 @@ public class JobsEndpointTests : IDisposable
     {
         var factory = CreateFactory(out var channelMock);
         var client = factory.CreateClient();
-        var request = new CreateJobRequest([new PhotoRequest("full/abc.jpg", 2)]);
+        var request = new CreateJobRequest([new PhotoRequest("full/abc.jpg", 2)], TicketNumber: 1);
 
         await client.PostAsJsonAsync("/jobs", request);
 

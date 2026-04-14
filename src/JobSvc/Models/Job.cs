@@ -23,6 +23,9 @@ public class Job
     public int RetryCount { get; set; } = 0;
 
     [Required]
+    public int TicketNumber { get; set; }
+
+    [Required]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     [Required]
