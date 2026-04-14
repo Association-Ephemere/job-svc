@@ -8,7 +8,8 @@ public record PhotoRequest(
 );
 
 public record CreateJobRequest(
-    [Required] List<PhotoRequest> Photos
+    [Required] List<PhotoRequest> Photos,
+    [Required] int TicketNumber
 );
 
 public record JobResponse(
@@ -23,6 +24,7 @@ public record JobListItemDto(
     int Total,
     int Printed,
     int RetryCount,
+    int TicketNumber,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt
 );
@@ -43,6 +45,7 @@ public record JobDetailDto(
     int Total,
     int Printed,
     int RetryCount,
+    int TicketNumber,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     List<JobPhotoDto> Photos

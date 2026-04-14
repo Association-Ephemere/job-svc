@@ -134,6 +134,7 @@ app.MapPost("/jobs", async (
     {
         Total = request.Photos.Count,
         Status = JobStatus.Queued,
+        TicketNumber = request.TicketNumber,
         Photos = request.Photos.Select(p => new JobPhoto
         {
             PhotoStorageKey = p.PhotoStorageKey,
@@ -221,6 +222,7 @@ app.MapGet("/jobs", async (
             j.Total,
             j.Printed,
             j.RetryCount,
+            j.TicketNumber,
             j.CreatedAt,
             j.UpdatedAt))
         .ToListAsync(ct);
@@ -243,6 +245,7 @@ app.MapGet("/jobs/{jobId:guid}", async (Guid jobId, JobDbContext db, Cancellatio
         job.Total,
         job.Printed,
         job.RetryCount,
+        job.TicketNumber,
         job.CreatedAt,
         job.UpdatedAt,
         job.Photos.Select(p => new JobPhotoDto(p.PhotoStorageKey, p.Copies)).ToList()));
