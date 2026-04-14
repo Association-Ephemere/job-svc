@@ -74,6 +74,9 @@ builder.Services.AddSingleton<IMinioClient>(sp =>
 builder.Services.AddSingleton<IBucketOperations>(sp => (IBucketOperations)sp.GetRequiredService<IMinioClient>());
 builder.Services.AddSingleton<IObjectOperations>(sp => (IObjectOperations)sp.GetRequiredService<IMinioClient>());
 
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 var app = builder.Build();
 
 // Ensure database is migrated on startup with retries (matching ingest-svc's robustness)
@@ -110,6 +113,9 @@ using (var scope = app.Services.CreateScope())
         }
     }
 }
+
+app.UseSwagger();
+app.UseSwaggerUI(c => c.RoutePrefix = string.Empty);
 
 app.MapGet("/health", () => Results.Ok());
 
