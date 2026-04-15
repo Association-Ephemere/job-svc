@@ -32,9 +32,7 @@ public sealed partial class RabbitMqInitializer : IRabbitMqInitializer
         var connection = await _connectionManager.GetConnectionAsync(ct);
         using var channel = await connection.CreateChannelAsync(cancellationToken: ct);
 
-        var quorumArgs = new Dictionary<string, object?> { ["x-queue-type"] = "quorum" };
-
-        // Declare Exchange
+        // Declare Exchanges
         await channel.ExchangeDeclareAsync(
             exchange: ExchangeName,
             type: ExchangeType.Direct,
@@ -48,7 +46,6 @@ public sealed partial class RabbitMqInitializer : IRabbitMqInitializer
             durable: true,
             exclusive: false,
             autoDelete: false,
-            arguments: quorumArgs,
             cancellationToken: ct);
 
         await channel.QueueDeclareAsync(
@@ -56,7 +53,6 @@ public sealed partial class RabbitMqInitializer : IRabbitMqInitializer
             durable: true,
             exclusive: false,
             autoDelete: false,
-            arguments: quorumArgs,
             cancellationToken: ct);
 
         // Bind Queues

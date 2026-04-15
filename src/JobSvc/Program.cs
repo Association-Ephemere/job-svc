@@ -14,6 +14,18 @@ using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        var origins = builder.Configuration["Cors:AllowedOrigins"];
+        if (string.IsNullOrEmpty(origins) || origins == "*")
+            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        else
+            policy.WithOrigins(origins.Split(',')).AllowAnyMethod().AllowAnyHeader();
+    });
+});
+
 // Register and validate database configuration
 builder.Services.AddOptions<DatabaseOptions>()
     .Bind(builder.Configuration.GetSection(DatabaseOptions.SectionName))
@@ -114,6 +126,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+app.UseCors();
 app.UseSwagger();
 app.UseSwaggerUI(c => c.RoutePrefix = string.Empty);
 
@@ -157,7 +170,7 @@ app.MapPost("/jobs", async (
             StartFromIndex = 0
         };
 
-        var body = JsonSerializer.SerializeToUtf8Bytes(message);
+        var body = JsonSerializer.SerializeToUtf8Bytes(message, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
         await channel.BasicPublishAsync(
             exchange: RabbitMqInitializer.ExchangeName,
