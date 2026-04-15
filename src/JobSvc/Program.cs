@@ -222,7 +222,7 @@ app.MapGet("/jobs", async (
     return Results.Ok(new JobListResponse(jobs, total));
 });
 
-app.MapGet("/jobs/{jobId:guid}", async (Guid jobId, JobDbContext db, CancellationToken ct) =>
+app.MapGet("/jobs/{jobId:guid}", async (Guid jobId, JobDbContext db, IObjectOperations objects, IOptions<MinioOptions> minioOptions, CancellationToken ct) =>
 {
     var job = await db.Jobs
         .Include(j => j.Photos)
@@ -230,6 +230,18 @@ app.MapGet("/jobs/{jobId:guid}", async (Guid jobId, JobDbContext db, Cancellatio
 
     if (job is null)
         return Results.NotFound();
+
+    var opts = minioOptions.Value;
+    
+    var photosWithUrls = await Task.WhenAll(job.Photos.Select(async p =>
+    {
+        var presignArgs = new PresignedGetObjectArgs()
+            .WithBucket(opts.Bucket)
+            .WithObject(p.PhotoStorageKey)
+            .WithExpiry(3600);
+        var url = await objects.PresignedGetObjectAsync(presignArgs);
+        return new JobPhotoDto(p.PhotoStorageKey, p.Copies, url);
+    }));
 
     return Results.Ok(new JobDetailDto(
         job.Id,
@@ -239,8 +251,9 @@ app.MapGet("/jobs/{jobId:guid}", async (Guid jobId, JobDbContext db, Cancellatio
         job.RetryCount,
         job.CreatedAt,
         job.UpdatedAt,
-        job.Photos.Select(p => new JobPhotoDto(p.PhotoStorageKey, p.Copies)).ToList()));
+        photosWithUrls.ToList()));
 });
+
 
 app.MapGet("/photos", async (
     [FromQuery] int? limit,
