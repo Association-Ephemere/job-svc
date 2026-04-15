@@ -36,7 +36,8 @@ public record JobListResponse(
 
 public record JobPhotoDto(
     string PhotoStorageKey,
-    int Copies
+    int Copies,
+    string Url
 );
 
 public record JobDetailDto(

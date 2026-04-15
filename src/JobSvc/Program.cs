@@ -201,7 +201,7 @@ app.MapGet("/jobs", async (
     var effectiveLimit = limit is null or <= 0 ? 50 : limit.Value;
     var effectiveOffset = offset is null or < 0 ? 0 : offset.Value;
 
-    var query = db.Jobs.AsQueryable();
+    var query = db.Jobs.Where(j => j.Status != JobStatus.Archived).AsQueryable();
 
     if (!string.IsNullOrEmpty(status))
     {
@@ -243,7 +243,12 @@ app.MapGet("/jobs", async (
     return Results.Ok(new JobListResponse(jobs, total));
 });
 
-app.MapGet("/jobs/{jobId:guid}", async (Guid jobId, JobDbContext db, CancellationToken ct) =>
+app.MapGet("/jobs/{jobId:guid}", async (
+    Guid jobId,
+    JobDbContext db,
+    IObjectOperations objects,
+    IOptions<MinioOptions> minioOptions,
+    CancellationToken ct) =>
 {
     var job = await db.Jobs
         .Include(j => j.Photos)
@@ -251,6 +256,17 @@ app.MapGet("/jobs/{jobId:guid}", async (Guid jobId, JobDbContext db, Cancellatio
 
     if (job is null)
         return Results.NotFound();
+
+    var opts = minioOptions.Value;
+    var photos = await Task.WhenAll(job.Photos.Select(async p =>
+    {
+        var presignArgs = new PresignedGetObjectArgs()
+            .WithBucket(opts.Bucket)
+            .WithObject(p.PhotoStorageKey)
+            .WithExpiry(3600);
+        var url = await objects.PresignedGetObjectAsync(presignArgs);
+        return new JobPhotoDto(p.PhotoStorageKey, p.Copies, url);
+    }));
 
     return Results.Ok(new JobDetailDto(
         job.Id,
@@ -261,7 +277,21 @@ app.MapGet("/jobs/{jobId:guid}", async (Guid jobId, JobDbContext db, Cancellatio
         job.TicketNumber,
         job.CreatedAt,
         job.UpdatedAt,
-        job.Photos.Select(p => new JobPhotoDto(p.PhotoStorageKey, p.Copies)).ToList()));
+        [.. photos]));
+});
+
+app.MapPatch("/jobs/{jobId:guid}/archive", async (Guid jobId, JobDbContext db, CancellationToken ct) =>
+{
+    var job = await db.Jobs.FirstOrDefaultAsync(j => j.Id == jobId, ct);
+
+    if (job is null)
+        return Results.NotFound();
+
+    job.Status = JobStatus.Archived;
+    job.UpdatedAt = DateTimeOffset.UtcNow;
+    await db.SaveChangesAsync(ct);
+
+    return Results.NoContent();
 });
 
 app.MapGet("/photos", async (

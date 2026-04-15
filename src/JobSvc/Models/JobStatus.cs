@@ -6,5 +6,6 @@ public enum JobStatus
     Printing,
     Requeued,
     Done,
-    Error
+    Error,
+    Archived
 }
