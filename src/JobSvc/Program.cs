@@ -311,14 +311,15 @@ app.MapGet("/photos", async (
         .WithPrefix("low/")
         .WithRecursive(true);
 
-    var allKeys = new List<string>();
+    var allItems = new List<(string Key, DateTime? LastModified)>();
     await foreach (var item in bucket.ListObjectsEnumAsync(listArgs, ct))
     {
         if (!item.IsDir)
-            allKeys.Add(item.Key);
+            allItems.Add((item.Key, item.LastModifiedDateTime));
     }
 
-    allKeys.Sort(StringComparer.Ordinal);
+    allItems.Sort((a, b) => (b.LastModified ?? DateTime.MinValue).CompareTo(a.LastModified ?? DateTime.MinValue));
+    var allKeys = allItems.Select(i => i.Key).ToList();
     var total = allKeys.Count;
     var page = allKeys.Skip(effectiveOffset).Take(effectiveLimit).ToList();
 
