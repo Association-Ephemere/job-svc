@@ -19,4 +19,5 @@ public class MinioOptions
 
     [Required]
     public string Bucket { get; set; } = string.Empty;
+    public string? PublicEndpoint { get; set; }
 }
