@@ -294,6 +294,7 @@ app.MapPatch("/jobs/{jobId:guid}/archive", async (Guid jobId, JobDbContext db, C
     return Results.NoContent();
 });
 
+
 app.MapGet("/photos", async (
     [FromQuery] int? limit,
     [FromQuery] int? offset,
