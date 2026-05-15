@@ -86,6 +86,21 @@ builder.Services.AddSingleton<IMinioClient>(sp =>
 builder.Services.AddSingleton<IBucketOperations>(sp => (IBucketOperations)sp.GetRequiredService<IMinioClient>());
 builder.Services.AddSingleton<IObjectOperations>(sp => (IObjectOperations)sp.GetRequiredService<IMinioClient>());
 
+// Separate client for presigned URLs — must use the public endpoint so the
+// AWS V4 signature host matches what the browser sends.
+
+builder.Services.AddKeyedSingleton<IObjectOperations>("presign", (sp, _) =>
+{
+    var opts = sp.GetRequiredService<IOptions<MinioOptions>>().Value;
+    var endpoint = opts.PublicEndpoint ?? opts.Endpoint;
+
+    return (IObjectOperations)new MinioClient()
+        .WithEndpoint(endpoint)
+        .WithCredentials(opts.AccessKey, opts.SecretKey)
+        .WithSSL(opts.UseSSL)
+        .Build();
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -246,7 +261,7 @@ app.MapGet("/jobs", async (
 app.MapGet("/jobs/{jobId:guid}", async (
     Guid jobId,
     JobDbContext db,
-    IObjectOperations objects,
+    [FromKeyedServices("presign")] IObjectOperations objects,
     IOptions<MinioOptions> minioOptions,
     CancellationToken ct) =>
 {
@@ -299,7 +314,7 @@ app.MapGet("/photos", async (
     [FromQuery] int? limit,
     [FromQuery] int? offset,
     IBucketOperations bucket,
-    IObjectOperations objects,
+    [FromKeyedServices("presign")] IObjectOperations presignObjects,
     IOptions<MinioOptions> minioOptions,
     CancellationToken ct) =>
 {
@@ -330,7 +345,7 @@ app.MapGet("/photos", async (
             .WithBucket(opts.Bucket)
             .WithObject(key)
             .WithExpiry(3600);
-        var url = await objects.PresignedGetObjectAsync(presignArgs);
+        var url = await presignObjects.PresignedGetObjectAsync(presignArgs);
         return new PhotoEntry(key, url);
     }));
 
