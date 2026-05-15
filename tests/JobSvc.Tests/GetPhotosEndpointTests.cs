@@ -12,6 +12,8 @@ using Minio.DataModel.Args;
 using Moq;
 using Npgsql;
 using RabbitMQ.Client;
+using Xunit;
+using Xunit.Abstractions;
 
 namespace JobSvc.Tests;
 
@@ -21,6 +23,13 @@ public class GetPhotosEndpointTests : IDisposable
     private record PhotoEntry(string Key, string Url);
 
     private readonly List<WebApplicationFactory<Program>> _factories = [];
+
+    private readonly ITestOutputHelper _output;
+
+public GetPhotosEndpointTests(ITestOutputHelper output)
+{
+_output = output;
+}
 
     public void Dispose()
     {
@@ -101,9 +110,12 @@ public class GetPhotosEndpointTests : IDisposable
                 // Replace MinIO services
                 services.Remove(services.Single(d => d.ServiceType == typeof(IMinioClient)));
                 services.Remove(services.Single(d => d.ServiceType == typeof(IBucketOperations)));
-                services.Remove(services.Single(d => d.ServiceType == typeof(IObjectOperations)));
+                foreach (var d in services.Where(d => d.ServiceType == typeof(IObjectOperations)).ToList())
+                    services.Remove(d);
+                
                 services.AddSingleton<IBucketOperations>(_ => bucketMock.Object);
                 services.AddSingleton<IObjectOperations>(_ => objectsMock.Object);
+                services.AddKeyedSingleton<IObjectOperations>("presign", (_, _) => objectsMock.Object);
                 services.AddSingleton<IMinioClient>(_ => Mock.Of<IMinioClient>());
             });
         });
@@ -162,6 +174,8 @@ public class GetPhotosEndpointTests : IDisposable
 
         var body = await (await factory.CreateClient().GetAsync("/photos"))
             .Content.ReadFromJsonAsync<PhotoListResponse>();
+
+        _output.WriteLine("Count: " + body.Photos.Count);
 
         Assert.NotNull(body);
         var photo = Assert.Single(body.Photos);

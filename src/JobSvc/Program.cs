@@ -334,7 +334,11 @@ app.MapGet("/photos", async (
             allItems.Add((item.Key, item.LastModifiedDateTime));
     }
 
-    allItems.Sort((a, b) => (b.LastModified ?? DateTime.MinValue).CompareTo(a.LastModified ?? DateTime.MinValue));
+    allItems.Sort((a, b) =>
+    {
+        var byDate = (b.LastModified ?? DateTime.MinValue).CompareTo(a.LastModified ?? DateTime.MinValue);
+        return byDate != 0 ? byDate : string.Compare(a.Key, b.Key, StringComparison.Ordinal);
+    });
     var allKeys = allItems.Select(i => i.Key).ToList();
     var total = allKeys.Count;
     var page = allKeys.Skip(effectiveOffset).Take(effectiveLimit).ToList();
